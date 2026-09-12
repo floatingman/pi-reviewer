@@ -5,7 +5,7 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 
 import type { ExtensionContext } from "@mariozechner/pi-coding-agent";
-import { parseAgentResponse, formatForTerminal, type ReviewResult } from "../../../src/core/output.js";
+import { parseAgentResponse, formatForTerminal, reviewOutputFile, type ReviewResult } from "../../../src/core/output.js";
 import { loadContext, mergeContextFiles } from "../../../src/core/context.js";
 import { resolveDiff, extractDiffFiles } from "../../../src/core/diff-resolver.js";
 import { buildJSONSystemPrompt, buildUserPrompt, type MinSeverity } from "../../../src/core/prompt-builder.js";
@@ -151,11 +151,14 @@ export async function handleLocalReview(opts: HandleLocalReviewOptions): Promise
   loaderState.stop = setReviewFooter(ctx, source, { model: currentModelId, thinking });
   const result = await runLocalReview({ systemPrompt, userPrompt, cwd: ctx.cwd, minSeverity, verbose, model, thinking, stopLoader: loaderState.stop, notify });
 
+  const outputFile = reviewOutputFile(parsed.pr);
+
   if (parsed.ui) {
     const injectionMsg = await handleUIReview({
       result, diff, conventions, source, cwd: ctx.cwd, notify,
       currentModel: currentModelId, defaultModel, availableModels,
       defaultThinking, contextGroups: allContextGroups,
+      outputFile,
     });
     if (injectionMsg) pi.sendUserMessage(injectionMsg);
     return;
@@ -163,6 +166,6 @@ export async function handleLocalReview(opts: HandleLocalReviewOptions): Promise
 
   const formatted = formatForTerminal(result);
   const date = new Date().toISOString().replace("T", " ").slice(0, 19);
-  await writeFile(path.join(ctx.cwd, "pi-review.md"), `# Pi Review — ${source}\n\n> ${date}\n\n---\n\n${formatted}\n`, "utf-8");
-  notify("Review saved → pi-review.md");
+  await writeFile(path.join(ctx.cwd, outputFile), `# Pi Review — ${source}\n\n> ${date}\n\n---\n\n${formatted}\n`, "utf-8");
+  notify(`Review saved → ${outputFile}`);
 }

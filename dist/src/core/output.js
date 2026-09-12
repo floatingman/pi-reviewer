@@ -2,6 +2,13 @@ import { writeFile } from "node:fs/promises";
 import path from "node:path";
 const SEVERITY_RANK = { INFO: 0, WARN: 1, CRITICAL: 2 };
 const SEVERITY_EMOJI = { CRITICAL: "🔴", WARN: "🟡", INFO: "🔵" };
+/**
+ * Output filename for a saved review. Includes the PR number when known
+ * (e.g. `pi-review-67.md`); falls back to `pi-review.md` otherwise.
+ */
+export function reviewOutputFile(pr) {
+    return typeof pr === "number" ? `pi-review-${pr}.md` : "pi-review.md";
+}
 export function extractAssistantText(message) {
     const msg = message;
     if (msg?.role !== "assistant")
@@ -219,7 +226,7 @@ export async function sendOutput(options) {
         return;
     }
     const cwd = options.cwd ?? process.cwd();
-    const filePath = path.join(cwd, "pi-review.md");
+    const filePath = path.join(cwd, reviewOutputFile(options.prNumber));
     await writeFile(filePath, formatForTerminal(result), "utf-8");
     console.log(`[pi-reviewer] review saved to ${filePath}`);
 }

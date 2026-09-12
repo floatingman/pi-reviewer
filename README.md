@@ -16,7 +16,7 @@ Runs inside the [pi](https://github.com/mariozechner/pi) TUI as a `/review` comm
 
 ### Local mode
 
-The default. Fetches the diff and your project conventions locally, spawns a pi subprocess to run the review, then saves the result to `pi-review.md`.
+The default. Fetches the diff and your project conventions locally, spawns a pi subprocess to run the review, then saves the result to `pi-review.md` (or `pi-review-<pr>.md` when you pass `--pr`).
 
 ```
 /review
@@ -35,13 +35,13 @@ For reviewing code on a remote machine. Instead of spawning a subprocess, SSH mo
 /review --ssh --branch dev
 ```
 
-Before starting the agent, pi-reviewer fetches everything over SSH in parallel: the diff, `AGENTS.md` / `CLAUDE.md`, `REVIEW.md`, and any context provider files. The diff is passed directly to the agent — no extra round-trip needed. The agent saves `pi-review.md` directly on the remote.
+Before starting the agent, pi-reviewer fetches everything over SSH in parallel: the diff, `AGENTS.md` / `CLAUDE.md`, `REVIEW.md`, and any context provider files. The diff is passed directly to the agent — no extra round-trip needed. The agent saves `pi-review.md` (or `pi-review-<pr>.md` with `--pr`) directly on the remote.
 
 > **Note:** `--model` and `--thinking` have no effect in SSH mode — the model is fixed to whatever the parent session is using.
 
 ### UI mode (`--ui`)
 
-Opens a local browser-based review interface after the agent finishes. Inspect each finding against the diff, decide per-comment (accept / reject / discuss), then click **Finish review** to save decisions to `pi-review.md`, send accepted findings to the agent, or both. Works with `--ssh` too.
+Opens a local browser-based review interface after the agent finishes. Inspect each finding against the diff, decide per-comment (accept / reject / discuss), then click **Finish review** to save decisions to `pi-review.md` (or `pi-review-<pr>.md` with `--pr`), send accepted findings to the agent, or both. Works with `--ssh` too.
 
 ```
 /review --ui

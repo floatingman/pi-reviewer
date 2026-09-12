@@ -146,6 +146,17 @@ describe("handleLocalReview — non-UI path", () => {
     await handleLocalReview(opts);
     expect(opts.notify).toHaveBeenCalledWith("Review saved → pi-review.md");
   });
+
+  it("writes pi-review-<pr>.md and names it in the notify when --pr is set", async () => {
+    const opts = makeOpts({ pr: 67 });
+    await handleLocalReview(opts);
+    expect(writeFile).toHaveBeenCalledWith(
+      expect.stringContaining("pi-review-67.md"),
+      expect.stringContaining("# Pi Review — feature vs main"),
+      "utf-8",
+    );
+    expect(opts.notify).toHaveBeenCalledWith("Review saved → pi-review-67.md");
+  });
 });
 
 describe("handleLocalReview — --ui path", () => {
@@ -155,6 +166,14 @@ describe("handleLocalReview — --ui path", () => {
     expect(handleUIReview).toHaveBeenCalledWith(expect.objectContaining({
       diff: "diff --git a/foo.ts\n",
       source: "feature vs main",
+    }));
+  });
+
+  it("passes outputFile to handleUIReview based on --pr", async () => {
+    const opts = makeOpts({ ui: true, pr: 67 });
+    await handleLocalReview(opts);
+    expect(handleUIReview).toHaveBeenCalledWith(expect.objectContaining({
+      outputFile: "pi-review-67.md",
     }));
   });
 

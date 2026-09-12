@@ -1,5 +1,6 @@
 import { writeFile } from "node:fs/promises";
 import path from "node:path";
+import { reviewOutputFile } from "../../../src/core/output.js";
 import { startUIServer } from "../../../src/core/ui-server.js";
 /**
  * Returns the injection message to send to the agent, or undefined if none.
@@ -7,7 +8,8 @@ import { startUIServer } from "../../../src/core/ui-server.js";
  * message at the right time (after any agent-side save has completed).
  */
 export async function handleUIReview(opts) {
-    const { result, diff, conventions, source, ssh, cwd, notify, saveRemote, currentModel, currentThinking, defaultModel, availableModels, defaultThinking, contextGroups } = opts;
+    const { result, diff, conventions, source, ssh, cwd, notify, saveRemote, currentModel, currentThinking, defaultModel, availableModels, defaultThinking, contextGroups, outputFile: outputFileOpt } = opts;
+    const outputFile = outputFileOpt ?? reviewOutputFile();
     const handle = await startUIServer(result, diff, source, ssh, { currentModel, currentThinking, defaultModel, availableModels, defaultThinking }, contextGroups);
     notify(`Review UI → ${handle.url}`);
     const action = await handle.waitForAction();
@@ -18,11 +20,11 @@ export async function handleUIReview(opts) {
         const md = buildDecisionsMarkdown(result, action.decisions, source, action.globalComment);
         if (saveRemote) {
             saveRemote(md);
-            notify("Review save requested → pi-review.md (remote)");
+            notify(`Review save requested → ${outputFile} (remote)`);
         }
         else {
-            await writeFile(path.join(cwd, "pi-review.md"), md, "utf-8");
-            notify("Review saved → pi-review.md");
+            await writeFile(path.join(cwd, outputFile), md, "utf-8");
+            notify(`Review saved → ${outputFile}`);
         }
     }
     if (action.type === "send" || action.type === "save-and-send") {

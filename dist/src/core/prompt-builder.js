@@ -68,9 +68,10 @@ export function buildJSONSystemPrompt(context, minSeverity = "INFO", contextFile
 }
 /**
  * Markdown system prompt — used by SSH-only mode.
- * Agent writes a human-readable markdown review and saves it to pi-review.md.
+ * Agent writes a human-readable markdown review and saves it to the output file
+ * (defaults to pi-review.md, or pi-review-<pr>.md when a PR number is supplied).
  */
-export function buildMarkdownSystemPrompt(minSeverity = "INFO", context, contextFiles) {
+export function buildMarkdownSystemPrompt(minSeverity = "INFO", context, contextFiles, outputFile = "pi-review.md") {
     const base = [
         ...buildSharedBase(minSeverity),
         "",
@@ -78,7 +79,7 @@ export function buildMarkdownSystemPrompt(minSeverity = "INFO", context, context
         "- A summary section with bullet points for each issue",
         "- An inline comments section listing file, line, and comment for each specific finding",
         "",
-        "After writing your review, save it to pi-review.md in the project root using the Write tool.",
+        `After writing your review, save it to ${outputFile} in the project root using the Write tool.`,
     ].join("\n");
     const conventionsStr = context ? (typeof context === "string" ? context : mergeContent(context.conventions)) : "";
     const reviewRulesStr = context ? (typeof context === "string" ? "" : mergeContent(context.reviewRules)) : "";

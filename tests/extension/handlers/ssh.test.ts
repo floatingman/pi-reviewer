@@ -160,4 +160,16 @@ describe("handleSSHReview — UI path (sshState = null)", () => {
     await handleSSHReview(opts);
     expect(opts.pi.sendUserMessage).toHaveBeenCalledWith("address all comments");
   });
+
+  it("saveRemote writes to pi-review-<pr>.md on the remote when --pr is set", async () => {
+    const opts = makeOpts({ ui: true, pr: 67 });
+    opts.pi = makeSyncAgentEndPi();
+    await handleSSHReview(opts);
+    const uiOpts = vi.mocked(handleUIReview).mock.calls[0][0] as { saveRemote?: (md: string) => void };
+    expect(typeof uiOpts.saveRemote).toBe("function");
+    uiOpts.saveRemote!("# review body");
+    expect(opts.pi.sendUserMessage).toHaveBeenCalledWith(
+      expect.stringContaining("/pi-review-67.md"),
+    );
+  });
 });

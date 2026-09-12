@@ -3,7 +3,7 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { parseAgentResponse, sendOutput } from "../../src/core/output.js";
+import { parseAgentResponse, reviewOutputFile, sendOutput } from "../../src/core/output.js";
 
 const createdDirs: string[] = [];
 
@@ -165,6 +165,17 @@ describe("parseAgentResponse", () => {
     );
     expect(result.comments).toHaveLength(1);
     expect(result.comments[0].severity).toBe("CRITICAL");
+  });
+});
+
+describe("reviewOutputFile", () => {
+  it("includes the PR number when provided", () => {
+    expect(reviewOutputFile(67)).toBe("pi-review-67.md");
+  });
+
+  it("falls back to pi-review.md without a PR number", () => {
+    expect(reviewOutputFile()).toBe("pi-review.md");
+    expect(reviewOutputFile(undefined)).toBe("pi-review.md");
   });
 });
 
@@ -359,6 +370,21 @@ describe("sendOutput", () => {
       "== Review Summary ==\nPlease address comments\n\n== Inline Comments ==\n🟡 src/a.ts:7 (RIGHT)\n🟡 Handle undefined"
     );
     expect(logSpy).toHaveBeenCalledWith(expect.stringContaining("pi-review.md"));
+  });
+
+  it("writes to pi-review-<pr>.md for file target when prNumber is set", async () => {
+    const dir = await createTempDir();
+
+    await sendOutput({
+      target: "file",
+      content: JSON.stringify({ summary: "ok", comments: [] }),
+      cwd: dir,
+      prNumber: 42,
+    });
+
+    const content = await readFile(path.join(dir, "pi-review-42.md"), "utf-8");
+    expect(content).toContain("== Review Summary ==");
+    expect(logSpy).toHaveBeenCalledWith(expect.stringContaining("pi-review-42.md"));
   });
 
   it("filters comments by minSeverity when posting", async () => {

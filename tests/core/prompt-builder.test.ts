@@ -145,6 +145,13 @@ describe("buildMarkdownSystemPrompt", () => {
     expect(prompt).toContain("save it to pi-review.md");
   });
 
+  it("uses the provided output filename in the save instruction", () => {
+    const prompt = buildMarkdownSystemPrompt("INFO", undefined, undefined, "pi-review-67.md");
+
+    expect(prompt).toContain("save it to pi-review-67.md");
+    expect(prompt).not.toContain("save it to pi-review.md");
+  });
+
   it("includes shared base content", () => {
     const prompt = buildMarkdownSystemPrompt();
 

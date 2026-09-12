@@ -33,6 +33,14 @@ export interface OutputOptions {
   minSeverity?: Severity;
 }
 
+/**
+ * Output filename for a saved review. Includes the PR number when known
+ * (e.g. `pi-review-67.md`); falls back to `pi-review.md` otherwise.
+ */
+export function reviewOutputFile(pr?: number): string {
+  return typeof pr === "number" ? `pi-review-${pr}.md` : "pi-review.md";
+}
+
 export function extractAssistantText(message: unknown): string {
   const msg = message as { role?: string; content?: unknown };
   if (msg?.role !== "assistant") return "";
@@ -269,7 +277,7 @@ export async function sendOutput(options: OutputOptions): Promise<void> {
   }
 
   const cwd = options.cwd ?? process.cwd();
-  const filePath = path.join(cwd, "pi-review.md");
+  const filePath = path.join(cwd, reviewOutputFile(options.prNumber));
   await writeFile(filePath, formatForTerminal(result), "utf-8");
   console.log(`[pi-reviewer] review saved to ${filePath}`);
 }

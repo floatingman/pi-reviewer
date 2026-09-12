@@ -1,7 +1,7 @@
 import { writeFile } from "node:fs/promises";
 import path from "node:path";
 
-import { type ReviewResult } from "../../../src/core/output.js";
+import { type ReviewResult, reviewOutputFile } from "../../../src/core/output.js";
 import { startUIServer, type CommentDecision, type ModelInfo, type ContextGroup } from "../../../src/core/ui-server.js";
 
 export interface UIHandlerOptions {
@@ -18,6 +18,8 @@ export interface UIHandlerOptions {
   availableModels?: ModelInfo[];
   defaultThinking?: string;
   contextGroups?: ContextGroup[];
+  /** Output filename (defaults to pi-review.md, or pi-review-<pr>.md when supplied). */
+  outputFile?: string;
   /** When set, save is delegated to the remote (SSH) instead of written locally. */
   saveRemote?: (markdown: string) => void;
 }
@@ -28,7 +30,8 @@ export interface UIHandlerOptions {
  * message at the right time (after any agent-side save has completed).
  */
 export async function handleUIReview(opts: UIHandlerOptions): Promise<string | undefined> {
-  const { result, diff, conventions, source, ssh, cwd, notify, saveRemote, currentModel, currentThinking, defaultModel, availableModels, defaultThinking, contextGroups } = opts;
+  const { result, diff, conventions, source, ssh, cwd, notify, saveRemote, currentModel, currentThinking, defaultModel, availableModels, defaultThinking, contextGroups, outputFile: outputFileOpt } = opts;
+  const outputFile = outputFileOpt ?? reviewOutputFile();
 
   const handle = await startUIServer(result, diff, source, ssh, { currentModel, currentThinking, defaultModel, availableModels, defaultThinking }, contextGroups);
   notify(`Review UI → ${handle.url}`);
@@ -42,10 +45,10 @@ export async function handleUIReview(opts: UIHandlerOptions): Promise<string | u
     const md = buildDecisionsMarkdown(result, action.decisions, source, action.globalComment);
     if (saveRemote) {
       saveRemote(md);
-      notify("Review save requested → pi-review.md (remote)");
+      notify(`Review save requested → ${outputFile} (remote)`);
     } else {
-      await writeFile(path.join(cwd, "pi-review.md"), md, "utf-8");
-      notify("Review saved → pi-review.md");
+      await writeFile(path.join(cwd, outputFile), md, "utf-8");
+      notify(`Review saved → ${outputFile}`);
     }
   }
 

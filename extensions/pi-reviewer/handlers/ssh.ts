@@ -1,7 +1,7 @@
 import path from "node:path";
 
 import type { ExtensionAPI, ExtensionContext } from "@mariozechner/pi-coding-agent";
-import { parseAgentResponse, extractLastAssistantText, type ReviewResult } from "../../../src/core/output.js";
+import { parseAgentResponse, extractLastAssistantText, reviewOutputFile, type ReviewResult } from "../../../src/core/output.js";
 import { loadContextSSH, mergeContextFiles } from "../../../src/core/context.js";
 import { extractDiffFiles } from "../../../src/core/diff-resolver.js";
 import { filterDiff } from "../../../src/core/diff-filter.js";
@@ -31,10 +31,12 @@ export interface RunSSHOptions {
   pi: ExtensionAPI;
   stopLoader: () => void;
   notify: (msg: string) => void;
+  outputFile?: string;
 }
 
 export function runSSHReview(opts: RunSSHOptions): void {
-  const { systemPrompt, userPrompt, pi, stopLoader, notify } = opts;
+  const { systemPrompt, userPrompt, pi, stopLoader, notify, outputFile } = opts;
+  const fileName = outputFile ?? "pi-review.md";
   let done = false;
 
   pi.on("before_agent_start", async () => {
@@ -46,7 +48,7 @@ export function runSSHReview(opts: RunSSHOptions): void {
     if (done) return;
     done = true;
     stopLoader();
-    notify("Review saved → pi-review.md");
+    notify(`Review saved → ${fileName}`);
   });
 
   pi.sendUserMessage(userPrompt);
@@ -133,6 +135,7 @@ export async function handleSSHReview(opts: HandleSSHReviewOptions): Promise<voi
     head: sshHeadBranch.trim() || "HEAD",
     detectedBase: sshOriginBase.trim() || undefined,
   });
+  const outputFile = reviewOutputFile(parsed.pr);
 
   const { diff: sshDiff, warning: sshDiffWarning, skippedFiles: sshSkippedFiles } = filterDiff(rawSshDiff);
   if (sshDiffWarning) notify(sshDiffWarning, "warning");
@@ -146,9 +149,9 @@ export async function handleSSHReview(opts: HandleSSHReviewOptions): Promise<voi
   const userPrompt = buildUserPrompt(sshDiff, sshSkippedFiles);
 
   if (!parsed.ui) {
-    const systemPrompt = buildMarkdownSystemPrompt(minSeverity, sshContext, sshContextFiles);
+    const systemPrompt = buildMarkdownSystemPrompt(minSeverity, sshContext, sshContextFiles, outputFile);
     loaderState.stop = setReviewFooter(ctx, source, { model: currentModelId, thinking });
-    runSSHReview({ systemPrompt, userPrompt, pi, stopLoader: loaderState.stop, notify });
+    runSSHReview({ systemPrompt, userPrompt, pi, stopLoader: loaderState.stop, notify, outputFile });
     return;
   }
 
@@ -161,9 +164,10 @@ export async function handleSSHReview(opts: HandleSSHReviewOptions): Promise<voi
     result, diff: sshDiff, conventions, source, ssh: true, cwd: ctx.cwd, notify,
     currentModel: currentModelId, currentThinking: thinking, defaultModel, availableModels,
     defaultThinking, contextGroups: sshAllContextGroups,
+    outputFile,
     saveRemote: (md) => {
       sshSaveTriggered = true;
-      pi.sendUserMessage(`Run \`git rev-parse --show-toplevel\` to get the project root path, then write the following content to that path + "/pi-review.md" (e.g. if the root is /some/path, write to /some/path/pi-review.md):\n\n${md}`);
+      pi.sendUserMessage(`Run \`git rev-parse --show-toplevel\` to get the project root path, then write the following content to that path + "/${outputFile}" (e.g. if the root is /some/path, write to /some/path/${outputFile}):\n\n${md}`);
     },
   });
   if (injectionMsg) {
