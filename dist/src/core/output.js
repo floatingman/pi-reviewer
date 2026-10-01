@@ -86,16 +86,56 @@ function extractFirstJsonObject(text) {
     }
     return null;
 }
+function escapeRawControlChars(raw) {
+    // JSON forbids raw control chars inside strings, but models emit them. Escape only
+    // inside string literals: between tokens, \n/\r/\t are legal whitespace and must stay.
+    let out = "";
+    let inString = false;
+    let escaped = false;
+    for (let i = 0; i < raw.length; i++) {
+        const c = raw[i];
+        if (escaped) {
+            out += c;
+            escaped = false;
+            continue;
+        }
+        if (inString && c === "\\") {
+            out += c;
+            escaped = true;
+            continue;
+        }
+        if (c === '"') {
+            inString = !inString;
+            out += c;
+            continue;
+        }
+        const code = raw.charCodeAt(i);
+        if (code >= 0x20) {
+            out += c;
+            continue;
+        }
+        if (!inString && (code === 0x0a || code === 0x0d || code === 0x09)) {
+            out += c;
+            continue;
+        }
+        if (code === 0x0a) {
+            out += "\\n";
+            continue;
+        }
+        if (code === 0x0d) {
+            out += "\\r";
+            continue;
+        }
+        if (code === 0x09) {
+            out += "\\t";
+            continue;
+        }
+        out += `\\u${code.toString(16).padStart(4, "0")}`;
+    }
+    return out;
+}
 function tryParseJSON(raw) {
-    for (const candidate of [raw, raw.replace(/[\u0000-\u001F]/g, (c) => {
-            if (c === "\n")
-                return "\\n";
-            if (c === "\r")
-                return "\\r";
-            if (c === "\t")
-                return "\\t";
-            return "";
-        })]) {
+    for (const candidate of [raw, escapeRawControlChars(raw)]) {
         try {
             const parsed = JSON.parse(candidate);
             if (parsed && typeof parsed === "object" && !Array.isArray(parsed))

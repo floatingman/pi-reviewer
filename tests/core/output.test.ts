@@ -82,6 +82,23 @@ describe("parseAgentResponse", () => {
     expect(result.comments).toHaveLength(0);
   });
 
+  it("parses pretty-printed JSON with raw newlines inside strings and between tokens", () => {
+    // Model emits JSON.stringify-style indentation but fails to escape newlines in
+    // string values: raw \n inside strings is invalid, yet \n between tokens is legal
+    const malformed = `{\n  "summary": "line one\n\nline two with \\"quoted\\" words",\n  "comments": [\n    { "file": "src/a.ts", "line": 3, "side": "RIGHT", "severity": "WARN", "body": "para one\npara two" }\n  ]\n}`;
+    const result = parseAgentResponse(malformed);
+    expect(result.summary).toBe('line one\n\nline two with "quoted" words');
+    expect(result.comments).toHaveLength(1);
+    expect(result.comments[0].body).toBe("🟡 para one\npara two");
+  });
+
+  it("escapes other raw control characters inside strings as unicode escapes", () => {
+    const bell = "\u0007";
+    const malformed = `{"summary":"ok${bell}then","comments":[]}`;
+    const result = parseAgentResponse(malformed);
+    expect(result.summary).toBe(`ok${bell}then`);
+  });
+
   it("parses JSON when trailing prose after closing fence contains braces", () => {
     const json = JSON.stringify({ summary: "looks good", comments: [] });
     const result = parseAgentResponse(
