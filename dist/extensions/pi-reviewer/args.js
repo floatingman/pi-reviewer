@@ -81,6 +81,18 @@ export function parseArgs(rawArgs) {
             i += 1;
             continue;
         }
+        if (token === "--max-diff-chars") {
+            const value = tokens[i + 1];
+            if (!value)
+                throw new Error("Missing value for --max-diff-chars");
+            const maxDiffChars = Number.parseInt(value, 10);
+            if (Number.isNaN(maxDiffChars) || maxDiffChars <= 0) {
+                throw new Error(`Invalid --max-diff-chars value: ${value}. Expected a positive integer`);
+            }
+            parsed.maxDiffChars = maxDiffChars;
+            i += 1;
+            continue;
+        }
         if (token === "--pr") {
             const value = tokens[i + 1];
             if (!value)

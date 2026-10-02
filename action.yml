@@ -25,6 +25,10 @@ inputs:
     required: false
     default: "info"
 
+  max-diff-chars:
+    description: "Max diff size in characters before whole files are skipped from the review (default: 100000)"
+    required: false
+
 runs:
   using: "composite"
   steps:
@@ -47,6 +51,7 @@ runs:
         POST_COMMENT: ${{ inputs.post-comment }}
         PI_REVIEWER_MODEL: ${{ inputs.model }}
         MIN_SEVERITY: ${{ inputs.min-severity }}
+        MAX_DIFF_CHARS: ${{ inputs.max-diff-chars }}
       run: node ${{ github.action_path }}/dist/src/ci/action-entry.js
 
 branding:

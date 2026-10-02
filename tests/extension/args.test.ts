@@ -67,6 +67,24 @@ describe("parseArgs --dir", () => {
   });
 });
 
+describe("parseArgs --max-diff-chars", () => {
+  it("parses --max-diff-chars with a number", () => {
+    expect(parseArgs("--max-diff-chars 300000").maxDiffChars).toBe(300000);
+  });
+
+  it("throws when --max-diff-chars has no value", () => {
+    expect(() => parseArgs("--max-diff-chars")).toThrow("Missing value for --max-diff-chars");
+  });
+
+  it("throws on non-numeric value", () => {
+    expect(() => parseArgs("--max-diff-chars big")).toThrow("Invalid --max-diff-chars value");
+  });
+
+  it("throws on zero or negative value", () => {
+    expect(() => parseArgs("--max-diff-chars 0")).toThrow("Invalid --max-diff-chars value");
+  });
+});
+
 describe("parseArgs combinations", () => {
   it("parses --model and --thinking together", () => {
     const result = parseArgs("--model openai/gpt-4o --thinking low");

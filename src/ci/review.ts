@@ -20,6 +20,7 @@ export interface ReviewOptions {
   commitId?: string;
   model?: string; // format: "provider/modelId" e.g. "anthropic/claude-opus-4-6"
   minSeverity?: MinSeverity;
+  maxDiffChars?: number;
 }
 
 
@@ -33,6 +34,7 @@ export async function review(options: ReviewOptions): Promise<void> {
     diff: options.diff,
     branch: options.branch,
     cwd,
+    maxDiffChars: options.maxDiffChars,
   });
   console.log(`[pi-reviewer] diff resolved — source: ${source}, size: ${diff.length} chars`);
   if (warning) console.warn(`[pi-reviewer] ${warning}`);

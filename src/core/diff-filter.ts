@@ -4,6 +4,7 @@ export const NOISE_PATTERNS: RegExp[] = [
   /^yarn\.lock$/,
   /^pnpm-lock\.yaml$/,
   /^bun\.lockb$/,
+  /(^|\/)go\.sum$/,
   /^\.yarn\//,
   /^dist\//,
   /^build\//,

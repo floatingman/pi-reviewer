@@ -2,6 +2,7 @@ import { readFileSync, writeFileSync, mkdirSync } from "node:fs";
 import { join } from "node:path";
 import { homedir } from "node:os";
 import type { MinSeverity } from "./prompt-builder.js";
+import { DEFAULT_MAX_CHARS } from "./diff-filter.js";
 
 export type ThinkingLevel = "off" | "minimal" | "low" | "medium" | "high" | "xhigh";
 
@@ -14,6 +15,7 @@ export interface PiReviewerConfig {
   thinking?: ThinkingLevel;
   autoCollapseViewed?: boolean;
   branch?: string;
+  maxDiffChars?: number;
 }
 
 export const CONFIG_DIR = join(homedir(), ".pi", "pi-reviewer");
@@ -50,6 +52,8 @@ export function applyConfigPatch(patch: Partial<PiReviewerConfig>): void {
       if (typeof value === "string" && allowed.includes(value)) (next as Record<string, unknown>)[key] = value;
     } else if (key === "branch") {
       if (typeof value === "string") next.branch = value || undefined;
+    } else if (key === "maxDiffChars") {
+      if (typeof value === "number" && Number.isInteger(value) && value > 0) next.maxDiffChars = value;
     } else if (typeof value === "string" || typeof value === "boolean") {
       (next as Record<string, unknown>)[key] = value;
     }
@@ -58,6 +62,14 @@ export function applyConfigPatch(patch: Partial<PiReviewerConfig>): void {
 }
 
 export function readTheme(): "dark" | "light" { return readConfig().theme ?? "dark"; }
+
+/** Effective diff size cap: CLI flag > config file > built-in default. */
+export function resolveMaxDiffChars(cliValue?: number): number {
+  if (typeof cliValue === "number" && Number.isInteger(cliValue) && cliValue > 0) return cliValue;
+  const configured = readConfig().maxDiffChars;
+  if (typeof configured === "number" && Number.isInteger(configured) && configured > 0) return configured;
+  return DEFAULT_MAX_CHARS;
+}
 export function readViewMode(): "split" | "unified" { return readConfig().viewMode ?? "split"; }
 export function readVerbose(): boolean { return readConfig().verbose ?? false; }
 export function readMinSeverity(): MinSeverity { return readConfig().minSeverity ?? "INFO"; }

@@ -39,9 +39,13 @@ const minSeverity =
     ? minSeverityRaw
     : undefined;
 
+const maxDiffCharsRaw = Number.parseInt(process.env.MAX_DIFF_CHARS ?? "", 10);
+const maxDiffChars = Number.isInteger(maxDiffCharsRaw) && maxDiffCharsRaw > 0 ? maxDiffCharsRaw : undefined;
+
 await review({
   pr: prInfo.number,
   commitId: prInfo.headSha,
   output: "comment",
   minSeverity,
+  maxDiffChars,
 });

@@ -28,6 +28,13 @@ describe("filterDiff", () => {
     expect(warning).toMatch(/yarn\.lock/);
   });
 
+  it("excludes go.sum", () => {
+    const raw = makeDiffSection("go.sum") + makeDiffSection("actions/go.sum");
+    const { diff, warning } = filterDiff(raw);
+    expect(diff.trim()).toBe("");
+    expect(warning).toMatch(/2 noise files excluded \(go\.sum, actions\/go\.sum\)/);
+  });
+
   it("excludes dist/ files", () => {
     const raw = makeDiffSection("src/index.ts") + makeDiffSection("dist/index.js");
     const { diff, warning } = filterDiff(raw);

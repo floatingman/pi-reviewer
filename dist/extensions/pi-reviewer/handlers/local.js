@@ -96,6 +96,7 @@ export async function handleLocalReview(opts) {
         branch: parsed.branch ?? readDefaultBranch(),
         pr: parsed.pr,
         dir: parsed.dir,
+        maxDiffChars: parsed.maxDiffChars,
     });
     if (warning)
         notify(warning, "warning");

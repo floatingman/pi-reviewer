@@ -78,6 +78,7 @@ Then inside the pi TUI:
 | `--ssh` | SSH mode: agent fetches diff and conventions on the remote | `--ssh` |
 | `--ui` | Open browser review UI after the agent finishes | `--ui` |
 | `--min-severity <level>` | Only report issues at this level and above: `info`, `warn`, or `critical` | `--min-severity warn` |
+| `--max-diff-chars <n>` | Max diff size in characters before whole files are skipped from the review (default: 100000) | `--max-diff-chars 300000` |
 | `--model <id>` | Model for this review in `provider/id` format. **Local mode only.** | `--model openai/gpt-4o` |
 | `--thinking <level>` | Thinking budget: `off`, `minimal`, `low`, `medium`, `high`, `xhigh`. **Local mode only.** | `--thinking low` |
 | `--dir <path>` | Run the review in a subdirectory (e.g. a package in a monorepo). Context files are loaded from the sub-project and all ancestor directories up to the repo root. | `--dir packages/api` |
@@ -97,6 +98,7 @@ Persistent settings are stored in `~/.pi/pi-reviewer/config.json`. All fields ar
   "model": "anthropic/claude-sonnet-4-6",
   "thinking": "low",
   "minSeverity": "INFO",
+  "maxDiffChars": 300000,
   "branch": "origin/develop",
   "autoCollapseViewed": false,
   "verbose": false
@@ -110,11 +112,14 @@ Persistent settings are stored in `~/.pi/pi-reviewer/config.json`. All fields ar
 | `model` | `"provider/id"` string | _(parent session's model)_ | Settings panel or edit directly |
 | `thinking` | `"off"` \| `"minimal"` \| `"low"` \| `"medium"` \| `"high"` \| `"xhigh"` | _(parent session's level)_ | Settings panel or edit directly |
 | `minSeverity` | `"INFO"` \| `"WARN"` \| `"CRITICAL"` | `"INFO"` | Edit directly |
+| `maxDiffChars` | positive integer | `100000` | Edit directly |
 | `branch` | any branch name | _(auto-detected from `origin/HEAD`)_ | Edit directly |
 | `autoCollapseViewed` | `true` \| `false` | `false` | Settings panel in `--ui` |
 | `verbose` | `true` \| `false` | `false` | Edit directly |
 
 **`minSeverity`** — `"INFO"` reports everything; `"WARN"` skips informational notes; `"CRITICAL"` only surfaces blockers. The `--min-severity` flag uses lowercase, the config file uses uppercase.
+
+**`maxDiffChars`** — diffs larger than this many characters have whole files skipped from the review (called out as not reviewed). Raise it for large PRs, 300000 chars is still comfortably within modern model context windows. The `--max-diff-chars` flag overrides it for a single run.
 
 **`branch`** — use the `origin/<name>` form (e.g. `"origin/develop"`) rather than a bare branch name. This ensures `git merge-base` diffs against the last pushed state, avoiding an empty diff when you're already on that branch.
 

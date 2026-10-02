@@ -14,6 +14,7 @@ export async function review(options) {
         diff: options.diff,
         branch: options.branch,
         cwd,
+        maxDiffChars: options.maxDiffChars,
     });
     console.log(`[pi-reviewer] diff resolved — source: ${source}, size: ${diff.length} chars`);
     if (warning)

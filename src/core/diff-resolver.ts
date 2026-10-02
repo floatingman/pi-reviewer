@@ -3,6 +3,7 @@ import { existsSync } from "node:fs";
 import { resolve } from "node:path";
 
 import { filterDiff } from "./diff-filter.js";
+import { resolveMaxDiffChars } from "./config.js";
 
 export interface DiffOptions {
   pr?: number;
@@ -10,6 +11,7 @@ export interface DiffOptions {
   branch?: string;
   cwd?: string;
   dir?: string;
+  maxDiffChars?: number;
 }
 
 export interface DiffResult {
@@ -133,6 +135,6 @@ export async function resolveDiff(options: DiffOptions): Promise<DiffResult> {
   }
 
   ensureNonEmptyDiff(raw);
-  const { diff, warning, skippedFiles } = filterDiff(raw);
+  const { diff, warning, skippedFiles } = filterDiff(raw, resolveMaxDiffChars(options.maxDiffChars));
   return { diff, source, warning, skippedFiles };
 }

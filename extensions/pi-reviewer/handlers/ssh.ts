@@ -5,6 +5,7 @@ import { parseAgentResponse, extractLastAssistantText, reviewOutputFile, type Re
 import { loadContextSSH, mergeContextFiles } from "../../../src/core/context.js";
 import { extractDiffFiles } from "../../../src/core/diff-resolver.js";
 import { filterDiff } from "../../../src/core/diff-filter.js";
+import { resolveMaxDiffChars } from "../../../src/core/config.js";
 import { buildJSONSystemPrompt, buildMarkdownSystemPrompt, buildUserPrompt, type MinSeverity } from "../../../src/core/prompt-builder.js";
 import { readSshFlag, resolveSshState, localFs, sshFs as makeSshFs, sshExec } from "../../../src/core/ssh.js";
 import { readDefaultBranch } from "../../../src/core/ui/server/index.js";
@@ -137,7 +138,7 @@ export async function handleSSHReview(opts: HandleSSHReviewOptions): Promise<voi
   });
   const outputFile = reviewOutputFile(parsed.pr);
 
-  const { diff: sshDiff, warning: sshDiffWarning, skippedFiles: sshSkippedFiles } = filterDiff(rawSshDiff);
+  const { diff: sshDiff, warning: sshDiffWarning, skippedFiles: sshSkippedFiles } = filterDiff(rawSshDiff, resolveMaxDiffChars(parsed.maxDiffChars));
   if (sshDiffWarning) notify(sshDiffWarning, "warning");
 
   const sshDiffFiles = extractDiffFiles(rawSshDiff);

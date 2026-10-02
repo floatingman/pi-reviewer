@@ -2,6 +2,7 @@ import { execSync } from "node:child_process";
 import { existsSync } from "node:fs";
 import { resolve } from "node:path";
 import { filterDiff } from "./diff-filter.js";
+import { resolveMaxDiffChars } from "./config.js";
 const EMPTY_DIFF_ERROR = "No changes found. Make sure you are on a feature branch with commits ahead of the base.";
 const extraPaths = ["/opt/homebrew/bin", "/usr/local/bin", "/usr/bin"].filter(Boolean);
 const augmentedPath = [...extraPaths, process.env.PATH ?? ""].join(":");
@@ -115,6 +116,6 @@ export async function resolveDiff(options) {
         }
     }
     ensureNonEmptyDiff(raw);
-    const { diff, warning, skippedFiles } = filterDiff(raw);
+    const { diff, warning, skippedFiles } = filterDiff(raw, resolveMaxDiffChars(options.maxDiffChars));
     return { diff, source, warning, skippedFiles };
 }
