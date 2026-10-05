@@ -182,7 +182,9 @@ const alreadyDraftedToday = (key, sha) =>
 
 // Record why each reviewable PR got no draft this run, so the digest and the
 // docs manifest can distinguish "already drafted earlier today" and "over the
-// per-run cap" from actual drafting failures.
+// per-run cap" from actual drafting failures. Priority-3 PRs ("also open")
+// are informational only and never drafted.
+const LOW_PRIORITY_NOTE = "informational listing; not drafted (below review priorities)";
 for (const p of all) {
   if (p.priority > 2 || p.isRenovate) continue;
   if (alreadyDraftedToday(`${p.repo}#${p.num}`, p.headSha)) p.noDraftReason = "dedupe";
@@ -195,7 +197,8 @@ const toReview = noReview ? [] : all
 
 // PRs past the cap (kept in `all`, listed in the digest, but not drafted).
 for (const p of all) {
-  if (p.priority > 2 || p.isRenovate) continue;
+  if (p.priority > 3 || p.isRenovate) continue;
+  if (p.priority === 3) { p.noDraftReason = "info"; continue; }
   if (!p.draft && !p.draftError && !p.noDraftReason && !toReview.includes(p)) {
     p.noDraftReason = "cap";
   }
@@ -347,6 +350,9 @@ for (const [prio, heading] of sections) {
     } else if (p.noDraftReason === "cap") {
       L.push("");
       L.push(`_(not drafted this run: daily review budget spent on higher-priority PRs)_`);
+    } else if (p.noDraftReason === "info") {
+      L.push("");
+      L.push(`_(informational listing; drafts focus on requested and unreviewed PRs)_`);
     }
     L.push("");
   }
