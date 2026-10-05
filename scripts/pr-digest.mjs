@@ -272,7 +272,17 @@ async function draftReview(p) {
     try { agent.abort?.(); } catch { /* ignore */ }
     throw e;
   } finally { unsubscribe?.(); }
-  return parseAgentResponse(finalResponse, MIN_SEVERITY.toUpperCase());
+  const parsed = parseAgentResponse(finalResponse, MIN_SEVERITY.toUpperCase());
+  // Some models return the JSON object verbatim as text; if the parser fell
+  // through to treating it as the summary, re-parse it here.
+  const raw = typeof parsed?.summary === "string" ? parsed.summary.trim() : "";
+  if (raw.startsWith("{")) {
+    try {
+      const re = JSON.parse(raw);
+      if (re && (re.summary || re.comments)) return re;
+    } catch { /* keep parsed as-is */ }
+  }
+  return parsed;
 }
 
 let drafted = 0;
