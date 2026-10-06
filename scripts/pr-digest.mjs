@@ -190,8 +190,22 @@ for (const p of all) {
   if (alreadyDraftedToday(`${p.repo}#${p.num}`, p.headSha)) p.noDraftReason = "dedupe";
 }
 
+// ---------- staleness gate: 90+ day PRs are never drafted ----------
+// A PR unreviewed for 3+ months is not waiting on a daily draft; it needs a
+// triage decision (review in one sitting, delegate, or close). Keep it listed
+// with a note, but never let it consume a draft slot.
+const STALE_DAYS = 90;
+let staleCount = 0;
+for (const p of all) {
+  if (p.ageDays >= STALE_DAYS && p.priority <= 2 && !p.isRenovate) {
+    p.noDraftReason = "stale";
+    staleCount++;
+  }
+}
+
 const toReview = noReview ? [] : all
   .filter((p) => p.priority <= 2 && !p.isRenovate)
+  .filter((p) => p.noDraftReason !== "stale")
   .filter((p) => !alreadyDraftedToday(`${p.repo}#${p.num}`, p.headSha))
   .slice(0, maxReviews);
 
@@ -215,6 +229,15 @@ const model = registryModel ?? {
   ...getModel("zai", "glm-5"),
   id: modelId,
   name: modelId,
+};
+
+// Diff-size-aware review timeout: larger diffs need proportionally more time.
+// Base 8 min for capped diffs (60k chars), scaled up to 20 min for the largest.
+// A diff that cannot finish inside its size-adjusted budget is oversized for
+// this pipeline and degrades to a "draft failed" note, as before.
+const reviewTimeoutMs = (diffChars) => {
+  const minutes = Math.min(20, Math.round(8 + (diffChars / 60000) * 6));
+  return minutes * 60000;
 };
 
 async function draftReview(p) {
@@ -268,7 +291,7 @@ async function draftReview(p) {
       finalResponse ? resolve() : reject(new Error("empty agent response"));
     });
   });
-  const timeout = new Promise((_, rej) => setTimeout(() => rej(new Error("review timeout (8 min)")), 480000));
+  const timeout = new Promise((_, rej) => setTimeout(() => rej(new Error(`review timeout (${Math.round(reviewTimeoutMs(capped.length) / 60000)} min)`)), reviewTimeoutMs(capped.length)));
   try {
     await Promise.race([agent.prompt(userPrompt).then(() => ended), timeout]);
   } catch (e) {
@@ -316,6 +339,7 @@ for (const p of all) counts[p.priority] = (counts[p.priority] || 0) + 1;
 L.push(`Open PRs needing your attention: **${all.length}** (personally requested: ${counts[0]}, team ${TEAM}: ${counts[1]}, no reviewer in maintained repos: ${counts[2]}, other open in maintained repos: ${counts[3]})`);
 if (ignoredCount > 0) L.push(`${ignoredCount} PR(s) by ignored authors (see scripts/pr-digest.ignore) were excluded.`);
 if (reviewedByMeCount > 0) L.push(`${reviewedByMeCount} PR(s) you already reviewed on GitHub were skipped (they return if the author pushes new commits).`);
+if (staleCount > 0) L.push(`${staleCount} stale PR(s) (90+ days old) were not drafted; triage them manually (review, delegate, or close).`);
 L.push("");
 const sections = [
   [0, "Requested from you directly"],
@@ -350,6 +374,9 @@ for (const [prio, heading] of sections) {
     } else if (p.noDraftReason === "cap") {
       L.push("");
       L.push(`_(not drafted this run: daily review budget spent on higher-priority PRs)_`);
+    } else if (p.noDraftReason === "stale") {
+      L.push("");
+      L.push(`_(stale: open ${p.ageDays} days without review. Triage manually: review in one sitting, delegate, or close. No draft until then.)_`);
     } else if (p.noDraftReason === "info") {
       L.push("");
       L.push(`_(informational listing; drafts focus on requested and unreviewed PRs)_`);
