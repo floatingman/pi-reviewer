@@ -193,15 +193,24 @@ for (const p of all) {
 // ---------- staleness gate: 90+ day PRs are never drafted ----------
 // A PR unreviewed for 3+ months is not waiting on a daily draft; it needs a
 // triage decision (review in one sitting, delegate, or close). Keep it listed
-// with a note, but never let it consume a draft slot. Exception: activity in
-// the last 14 days (author pushed / PR updated) means the author is re-engaged,
-// so the PR re-qualifies for drafting.
+// with a note, but never let it consume a draft slot. Exception: the AUTHOR
+// pushed a commit in the last 14 days (re-engaged), checked via the latest
+// commit date - comments alone (including maintainer triage pings) do NOT
+// re-qualify, because they do not change the code under review.
 const STALE_DAYS = 90;
-const RECENT_ACTIVITY_DAYS = 14;
+const RECENT_PUSH_DAYS = 14;
 let staleCount = 0;
 for (const p of all) {
   if (p.ageDays >= STALE_DAYS && p.priority <= 2 && !p.isRenovate) {
-    if (p.updated && ageDays(p.updated) < RECENT_ACTIVITY_DAYS) continue; // re-engaged
+    let lastPush = null;
+    try {
+      const commits = ghApi(`/repos/${p.repo}/pulls/${p.num}/commits?per_page=100`);
+      if (Array.isArray(commits) && commits.length) {
+        const dates = commits.map((c) => c.commit?.committer?.date).filter(Boolean).sort();
+        lastPush = dates[dates.length - 1];
+      }
+    } catch { /* non-fatal: fall through to stale */ }
+    if (lastPush && ageDays(lastPush) < RECENT_PUSH_DAYS) continue; // author re-engaged
     p.noDraftReason = "stale";
     staleCount++;
   }
