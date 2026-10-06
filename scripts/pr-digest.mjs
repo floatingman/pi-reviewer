@@ -110,7 +110,7 @@ try {
       const d = ghApi(`/repos/${repo}/pulls/${it.number}`);
       headSha = d.head?.sha || null;
     } catch { /* non-fatal */ }
-    add(repo, it.number, it.title, it.user.login, it.html_url, "You are personally requested", 0, { created: it.created_at, headSha });
+    add(repo, it.number, it.title, it.user.login, it.html_url, "You are personally requested", 0, { created: it.created_at, updated: it.updated_at, headSha });
   }
 } catch (e) { console.error("[digest] review-requested search failed:", e.message); }
 
@@ -130,7 +130,7 @@ for (const { repo } of MAINTAINED) {
       else if (none) { why = "No reviewers assigned (repo you maintain)"; priority = 2; }
       else { why = "Open in repo you maintain"; priority = 3; }
       add(repo, p.number, p.title, p.user.login, p.html_url, why, priority, {
-        created: p.created_at, additions: p.additions, deletions: p.deletions,
+        created: p.created_at, updated: p.updated_at, additions: p.additions, deletions: p.deletions,
         headSha: p.head?.sha || null,
         labels: (p.labels || []).map((l) => l.name).filter((n) => /renovate|dep/i.test(n)),
       });
@@ -193,11 +193,15 @@ for (const p of all) {
 // ---------- staleness gate: 90+ day PRs are never drafted ----------
 // A PR unreviewed for 3+ months is not waiting on a daily draft; it needs a
 // triage decision (review in one sitting, delegate, or close). Keep it listed
-// with a note, but never let it consume a draft slot.
+// with a note, but never let it consume a draft slot. Exception: activity in
+// the last 14 days (author pushed / PR updated) means the author is re-engaged,
+// so the PR re-qualifies for drafting.
 const STALE_DAYS = 90;
+const RECENT_ACTIVITY_DAYS = 14;
 let staleCount = 0;
 for (const p of all) {
   if (p.ageDays >= STALE_DAYS && p.priority <= 2 && !p.isRenovate) {
+    if (p.updated && ageDays(p.updated) < RECENT_ACTIVITY_DAYS) continue; // re-engaged
     p.noDraftReason = "stale";
     staleCount++;
   }
