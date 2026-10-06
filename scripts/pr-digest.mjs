@@ -99,17 +99,21 @@ function add(repo, num, title, author, url, why, priority, extra = {}) {
 
 // 1. personally requested (all of GitHub, in practice rancher org)
 let ignoredCount = 0;
+let draftCount = 0;
 try {
   const res = ghSearch(`type:pr state:open review-requested:${ME}`);
   for (const it of res.items || []) {
     if (isIgnored(it.user.login)) { ignoredCount++; continue; }
     const repo = it.repository_url.replace("https://api.github.com/repos/", "");
-    // fetch head SHA for same-day dedupe (search API doesn't include it)
+    // fetch full PR for head SHA + draft status (search API omits both)
     let headSha = null;
+    let isDraft = false;
     try {
       const d = ghApi(`/repos/${repo}/pulls/${it.number}`);
       headSha = d.head?.sha || null;
+      isDraft = !!d.draft;
     } catch { /* non-fatal */ }
+    if (isDraft) { draftCount++; continue; }
     add(repo, it.number, it.title, it.user.login, it.html_url, "You are personally requested", 0, { created: it.created_at, updated: it.updated_at, headSha });
   }
 } catch (e) { console.error("[digest] review-requested search failed:", e.message); }
@@ -121,6 +125,7 @@ for (const { repo } of MAINTAINED) {
     if (!Array.isArray(prs)) continue;
     for (const p of prs) {
       if (isIgnored(p.user.login)) { ignoredCount++; continue; }
+      if (p.draft) { draftCount++; continue; }
       const teamReq = (p.requested_teams || []).some((t) => t.slug === TEAM);
       const personal = (p.requested_reviewers || []).some((r) => r.login === ME);
       const none = (p.requested_reviewers || []).length === 0 && (p.requested_teams || []).length === 0;
@@ -351,6 +356,7 @@ const counts = { 0: 0, 1: 0, 2: 0, 3: 0 };
 for (const p of all) counts[p.priority] = (counts[p.priority] || 0) + 1;
 L.push(`Open PRs needing your attention: **${all.length}** (personally requested: ${counts[0]}, team ${TEAM}: ${counts[1]}, no reviewer in maintained repos: ${counts[2]}, other open in maintained repos: ${counts[3]})`);
 if (ignoredCount > 0) L.push(`${ignoredCount} PR(s) by ignored authors (see scripts/pr-digest.ignore) were excluded.`);
+if (draftCount > 0) L.push(`${draftCount} draft PR(s) were excluded (drafts are not reviewable until marked ready).`);
 if (reviewedByMeCount > 0) L.push(`${reviewedByMeCount} PR(s) you already reviewed on GitHub were skipped (they return if the author pushes new commits).`);
 if (staleCount > 0) L.push(`${staleCount} stale PR(s) (90+ days old) were not drafted; triage them manually (review, delegate, or close).`);
 L.push("");
